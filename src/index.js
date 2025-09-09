@@ -131,24 +131,53 @@ app.get('/economic-calendar', async (c) => {
       'Origin': 'https://www.investing.com',
       'Cookie': session.headers.get('set-cookie') || ''
     }
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: apiHeaders,
-      body: formData.toString()
-    })
+    // 分页抓取：根据 limit_from 逐页请求，直到页面不再新增事件
+    let combinedHtml = ''
+    let lastSeenId = null
+    const maxPages = 200
 
-    if (!response.ok) {
-      return c.json({ error: 'Failed to fetch economic calendar data' }, 500)
+    for (let page = 0; page < maxPages; page++) {
+      formData.set('limit_from', String(page))
+
+      const pageResp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: apiHeaders,
+        body: formData.toString()
+      })
+
+      if (!pageResp.ok) {
+        break
+      }
+
+      const pageData = await pageResp.json()
+      const html = pageData && pageData.data ? pageData.data : ''
+      if (!html) {
+        break
+      }
+
+      combinedHtml += html
+
+      // 提取本页最后一个事件ID，用于判断是否到末页
+      const idMatches = [...html.matchAll(/eventRowId_(\d+)/g)]
+      const pageLastId = idMatches.length > 0 ? idMatches[idMatches.length - 1][1] : null
+
+      if (page === 0) {
+        lastSeenId = pageLastId
+      } else {
+        if (!pageLastId || pageLastId === lastSeenId) {
+          break
+        }
+        lastSeenId = pageLastId
+      }
+
+      // 如果服务端返回行数为0，也可以提前结束
+      if (typeof pageData.rows_num !== 'undefined' && Number(pageData.rows_num) === 0) {
+        break
+      }
     }
 
-    const data = await response.json()
-    
-    if (!data.data) {
-      return c.json({ error: 'No data returned from API' }, 500)
-    }
-
-    // 解析HTML数据
-    const events = parseEconomicCalendar(data.data)
+    // 解析合并后的HTML数据
+    const events = parseEconomicCalendar(combinedHtml)
     
     return c.json({
       success: true,
