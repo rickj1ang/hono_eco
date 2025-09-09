@@ -1,0 +1,27 @@
+{
+  "name": "hono-economic-calendar",
+  "version": "1.0.0",
+  "description": "Economic Calendar API built with Hono for Cloudflare Workers",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node test-api.js",
+    "test:local": "wrangler dev --local"
+  },
+  "dependencies": {
+    "hono": "^3.12.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.22.0"
+  },
+  "keywords": [
+    "hono",
+    "cloudflare-workers",
+    "economic-calendar",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT"
+}
