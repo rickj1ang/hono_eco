@@ -63,17 +63,17 @@ function parseEconomicCalendar(html) {
       const eventTdMatch = row.match(/<td[^>]*class="[^"]*event[^"]*"[^>]*>([\s\S]*?)<\/td>/)
       if (eventTdMatch) event.event = stripTags(eventTdMatch[1])
 
-      // 提取实际值
-      const actualMatch = row.match(/<td[^>]*id="eventActual_[^"]*"[^>]*>([^<]*)<\/td>/)
-      if (actualMatch) event.actual = cleanHtmlLight(actualMatch[1])
+      // 提取实际值（允许内部包含标签）
+      const actualMatch = row.match(/<td[^>]*id=\"eventActual_[^\"]*\"[^>]*>([\s\S]*?)<\/td>/)
+      if (actualMatch) event.actual = cleanHtmlLight(stripTags(actualMatch[1]))
 
-      // 提取预测值
-      const forecastMatch = row.match(/<td[^>]*id="eventForecast_[^"]*"[^>]*>([^<]*)<\/td>/)
-      if (forecastMatch) event.forecast = cleanHtmlLight(forecastMatch[1])
+      // 提取预测值（允许内部包含标签）
+      const forecastMatch = row.match(/<td[^>]*id=\"eventForecast_[^\"]*\"[^>]*>([\s\S]*?)<\/td>/)
+      if (forecastMatch) event.forecast = cleanHtmlLight(stripTags(forecastMatch[1]))
 
-      // 提取前值
-      const previousMatch = row.match(/<td[^>]*id="eventPrevious_[^"]*"[^>]*>([^<]*)<\/td>/)
-      if (previousMatch) event.previous = cleanHtmlLight(previousMatch[1])
+      // 提取前值（允许内部包含标签）
+      const previousMatch = row.match(/<td[^>]*id=\"eventPrevious_[^\"]*\"[^>]*>([\s\S]*?)<\/td>/)
+      if (previousMatch) event.previous = cleanHtmlLight(stripTags(previousMatch[1]))
 
       // 不基于 currency 过滤，直接收集
       events.push(event)
