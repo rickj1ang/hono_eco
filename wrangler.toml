@@ -1,0 +1,9 @@
+name = "hono-economic-calendar"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "hono-economic-calendar"
+
+[env.staging]
+name = "hono-economic-calendar-staging"
