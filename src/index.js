@@ -3,8 +3,15 @@ import { Hono } from 'hono'
 const app = new Hono()
 
 // 解析HTML内容的辅助函数
+function cleanHtmlLight(s) {
+  if (!s) return ''
+  return s
+    .replace(/\u00A0|&nbsp;|&#160;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 function stripTags(html) {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return cleanHtmlLight(html.replace(/<[^>]+>/g, ' '))
 }
 function parseEconomicCalendar(html) {
   const events = []
@@ -58,15 +65,15 @@ function parseEconomicCalendar(html) {
 
       // 提取实际值
       const actualMatch = row.match(/<td[^>]*id="eventActual_[^"]*"[^>]*>([^<]*)<\/td>/)
-      if (actualMatch) event.actual = actualMatch[1].trim()
+      if (actualMatch) event.actual = cleanHtmlLight(actualMatch[1])
 
       // 提取预测值
       const forecastMatch = row.match(/<td[^>]*id="eventForecast_[^"]*"[^>]*>([^<]*)<\/td>/)
-      if (forecastMatch) event.forecast = forecastMatch[1].trim()
+      if (forecastMatch) event.forecast = cleanHtmlLight(forecastMatch[1])
 
       // 提取前值
       const previousMatch = row.match(/<td[^>]*id="eventPrevious_[^"]*"[^>]*>([^<]*)<\/td>/)
-      if (previousMatch) event.previous = previousMatch[1].trim()
+      if (previousMatch) event.previous = cleanHtmlLight(previousMatch[1])
 
       // 不基于 currency 过滤，直接收集
       events.push(event)
