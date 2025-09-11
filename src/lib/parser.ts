@@ -1,9 +1,4 @@
-import { Hono } from 'hono'
-import type { Context } from 'hono'
-import { health } from './routes/health'
-import { calendar } from './routes/calendar'
-
-type EconomicEvent = {
+export type EconomicEvent = {
   id: string
   timestamp: number
   event: string
@@ -12,7 +7,7 @@ type EconomicEvent = {
   previous: string
 }
 
-function cleanHtmlLight(input: string | undefined | null): string {
+export function cleanHtmlLight(input: string | undefined | null): string {
   if (!input) return ''
   return input
     .replace(/\u00A0|&nbsp;|&#160;/g, ' ')
@@ -20,7 +15,7 @@ function cleanHtmlLight(input: string | undefined | null): string {
     .trim()
 }
 
-function stripTags(html: string): string {
+export function stripTags(html: string): string {
   return cleanHtmlLight(html.replace(/<[^>]+>/g, ' '))
 }
 
@@ -29,7 +24,7 @@ function matchGroup(source: string, regex: RegExp, group = 1): string | null {
   return m && m[group] ? m[group] : null
 }
 
-function parseEconomicCalendar(html: string): EconomicEvent[] {
+export function parseEconomicCalendar(html: string): EconomicEvent[] {
   const events: EconomicEvent[] = []
   const rows = html.split('</tr>')
   let currentDate = ''
@@ -58,9 +53,7 @@ function parseEconomicCalendar(html: string): EconomicEvent[] {
       if (isoRaw) {
         const iso = isoRaw.replace(/\//g, '-') + ' UTC'
         const ms = Date.parse(iso)
-        if (!Number.isNaN(ms)) {
-          event.timestamp = Math.floor(ms / 1000)
-        }
+        if (!Number.isNaN(ms)) event.timestamp = Math.floor(ms / 1000)
       } else {
         event.timestamp = currentDate ? Number(currentDate) : 0
       }
@@ -83,13 +76,5 @@ function parseEconomicCalendar(html: string): EconomicEvent[] {
 
   return events
 }
-
-const app = new Hono()
-
-app.route('/health', health)
-app.route('/economic-calendar', calendar)
-app.get('/', (c: Context) => c.json({ message: 'Economic Calendar API', endpoints: { '/economic-calendar': 'GET', '/health': 'GET' } }))
-
-export default app
 
 
