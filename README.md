@@ -1,93 +1,130 @@
-# Hono Economic Calendar API
+# Hono Economic Calendar (Cloudflare Workers)
 
-A Cloudflare Workers API built with Hono that provides economic calendar data from Investing.com.
+A Cloudflare Workers API (Hono) that scrapes Investing.com’s economic calendar and returns structured events.
 
-## Features
+## What this repo does
 
-- Get economic calendar events for specific date ranges
-- Filter for high-importance US events only
-- RESTful API with JSON responses
-- Built for Cloudflare Workers
+- Exposes HTTP endpoints via Hono on Cloudflare Workers
+- Calls Investing.com (session bootstrap + filtered POST) and paginates through results
+- Parses the returned HTML into JSON events
+- Cleans non-breaking spaces and nested markup
+- Returns a simplified event shape tuned for programmatic use
 
-## Setup
+## High-level architecture
 
-### Prerequisites
+- Entry: `src/index.ts`
+- Routes: `src/routes/*`
+  - `health.ts`: `GET /health`
+  - `calendar.ts`: `GET /economic-calendar`
+- Service: `src/services/investing.ts`
+  - Session init, headers, `URLSearchParams`, pagination via `limit_from`, aggregate HTML
+- Parser lib: `src/lib/parser.ts`
+  - `parseEconomicCalendar(html)`: HTML → `EconomicEvent[]`
+  - `stripTags()` / `cleanHtmlLight()` for fast cleaning
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Cloudflare account (for deployment)
-
-### Installation
-
-1. Install dependencies:
-```bash
-npm install
+Directory snapshot
+```
+src/
+  index.ts                // mounts routes
+  routes/
+    health.ts             // /health
+    calendar.ts           // /economic-calendar
+  services/
+    investing.ts          // fetch + pagination (HTML accumulation)
+  lib/
+    parser.ts             // HTML → events, cleaners
+wrangler.toml             // main = src/index.ts
 ```
 
-2. Test locally:
-```bash
-npm run dev
-```
+## Data model (response)
 
-3. Deploy to Cloudflare Workers:
-```bash
-npm run deploy
-```
-
-## API Endpoints
-
-### GET /
-
-Returns API information and available endpoints.
-
-### GET /health
-
-Health check endpoint.
-
-### GET /economic-calendar
-
-Get economic calendar events.
-
-**Parameters:**
-- `from_date` (required): Start date in DD/MM/YYYY format
-- `to_date` (required): End date in DD/MM/YYYY format
-
-**Example:**
-```
-GET /economic-calendar?from_date=01/01/2024&to_date=31/01/2024
-```
-
-**Response:**
 ```json
 {
   "success": true,
-  "count": 10,
-  "from_date": "01/01/2024",
-  "to_date": "31/01/2024",
+  "count": 96,
+  "from_date": "01/12/2024",
+  "to_date": "31/01/2025",
   "timezone": "GMT",
-  "importance": "High",
-  "country": "United States",
   "events": [
     {
-      "id": "12345",
-      "date": "1640995200",
-      "time": "14:30",
-      "currency": "USD",
-      "importance": "High",
-      "event": "Non-Farm Payrolls",
-      "actual": "200K",
-      "forecast": "195K",
-      "previous": "199K"
+      "id": "511639",
+      "timestamp": 1733137200,
+      "event": "ISM Manufacturing PMI (Nov)",
+      "actual": "48.4",
+      "forecast": "47.7",
+      "previous": "46.5"
     }
   ]
 }
 ```
 
-## Development
+Notes:
+- `timestamp` is UTC seconds. Prefer `data-event-datetime`; fallback to day-header epoch.
+- `actual/forecast/previous` may be empty for holidays or if upstream lacks values.
 
-The project uses:
-- [Hono](https://hono.dev/) - Web framework
-- [Wrangler](https://developers.cloudflare.com/workers/wrangler/) - Cloudflare Workers CLI
+## API endpoints
+
+- `GET /` → metadata
+- `GET /health` → `{ status: 'OK', timestamp }`
+- `GET /economic-calendar?from_date=DD/MM/YYYY&to_date=DD/MM/YYYY`
+  - Filters applied: USA (`country[]=5`), high importance (`importance[]=3`), timezone UTC (`timeZone=0`)
+  - Pagination: iterates `limit_from` until last id repeats or no rows
+
+Examples
+```bash
+curl "http://localhost:8787/health"
+curl "http://localhost:8787/economic-calendar?from_date=01/12/2024&to_date=31/01/2025"
+```
+
+## Run locally
+
+Prereqs: Node 18+ (or Bun), Cloudflare Wrangler.
+
+```bash
+npm install
+npm run dev
+# or
+bun run dev
+```
+
+Local URL: http://localhost:8787
+
+## Deploy
+
+```bash
+npm run deploy
+# or
+bun run deploy
+```
+
+Wrangler config (`wrangler.toml`) points `main` to `src/index.ts`.
+
+## Coding guidelines (for agents & contributors)
+
+- Routing
+  - Add a sub-router in `src/routes/<feature>.ts` and export a `Hono` instance
+  - Mount in `src/index.ts` via `app.route('/path', router)`
+- Services
+  - Keep remote calls and pagination in `src/services`
+  - Routes should validate inputs and shape responses only
+- Parsing & cleaning
+  - Keep HTML parsing in `src/lib/parser.ts`
+  - Use `stripTags()` + `cleanHtmlLight()`; avoid heavyweight HTML decoders
+  - For table cells, capture `([\s\S]*?)` then strip tags
+- Time handling
+  - Always output a UTC `timestamp` (seconds)
+- Pagination policy
+  - Iterate pages with `limit_from`; stop on repeated last id, `rows_num == 0`, or empty HTML; cap pages with `maxPages`
+- TypeScript
+  - Use simple domain types (e.g., `EconomicEvent`)
+  - Guard optional values with `?.`, `??`, and length checks
+- Errors
+  - Return 400 for validation, 500 for unhandled exceptions
+
+## Extending the API
+
+- Add `/economic-calendar/raw` to return upstream HTML for diagnostics (new route + service reuse)
+- Add query params (countries, importance) by passing through to service’s `URLSearchParams`
 
 ## License
 
