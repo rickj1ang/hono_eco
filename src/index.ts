@@ -95,7 +95,8 @@ app.get('/', (c: Context) => c.json({
   endpoints: { 
     '/economic-calendar': 'GET', 
     '/health': 'GET',
-    '/hk-post/search-buildings': 'GET'
+    '/hk-post/search-buildings': 'GET',
+    '/hk-post/ip-monitor': 'GET'
   } 
 }))
 
