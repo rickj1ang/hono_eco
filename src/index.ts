@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { health } from './routes/health'
 import { calendar } from './routes/calendar'
+import { hkpost } from './routes/hkpost'
 
 type EconomicEvent = {
   id: string
@@ -88,7 +89,15 @@ const app = new Hono()
 
 app.route('/health', health)
 app.route('/economic-calendar', calendar)
-app.get('/', (c: Context) => c.json({ message: 'Economic Calendar API', endpoints: { '/economic-calendar': 'GET', '/health': 'GET' } }))
+app.route('/hk-post', hkpost)
+app.get('/', (c: Context) => c.json({ 
+  message: 'Economic Calendar & HK Post Address API', 
+  endpoints: { 
+    '/economic-calendar': 'GET', 
+    '/health': 'GET',
+    '/hk-post/search-buildings': 'GET'
+  } 
+}))
 
 export default app
 
